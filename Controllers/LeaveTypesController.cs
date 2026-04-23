@@ -66,8 +66,28 @@ public class LeaveTypesController : Controller
         {
             try
             {
+                var existing = await _context.LeaveTypes.AsNoTracking().FirstOrDefaultAsync(lt => lt.Id == id);
+                if (existing == null) return NotFound();
+
+                int difference = leaveType.DefaultDays - existing.DefaultDays;
+
                 leaveType.DateModified = DateTime.UtcNow;
                 _context.Update(leaveType);
+
+                if (difference != 0)
+                {
+                    var period = DateTime.Now.Year;
+                    var allocationsToUpdate = await _context.LeaveAllocations
+                        .Where(a => a.LeaveTypeId == id && a.Period == period)
+                        .ToListAsync();
+
+                    foreach (var alloc in allocationsToUpdate)
+                    {
+                        alloc.NumberOfDays += difference;
+                        if (alloc.NumberOfDays < 0) alloc.NumberOfDays = 0;
+                    }
+                }
+
                 await _context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)

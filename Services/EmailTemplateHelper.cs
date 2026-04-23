@@ -48,7 +48,7 @@ public static class EmailTemplateHelper
         <body>
             <div class=""container"">
                 <div class=""header"">
-                    <h1 style=""margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;"">LMS Portal</h1>
+                    <h1 style=""margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;"">LeavePro Portal</h1>
                 </div>
                 <div class=""content"">
                     <h2 style=""margin-top: 0; color: #1e293b; font-size: 20px;"">{title}</h2>
@@ -57,10 +57,10 @@ public static class EmailTemplateHelper
                         {actionButton}
                     </table>
                     <div class=""divider""></div>
-                    <p style=""font-size: 14px; margin-bottom: 0;"">Regards,<br><strong>LMS Administrator Team</strong></p>
+                    <p style=""font-size: 14px; margin-bottom: 0;"">Regards,<br><strong>LeavePro Administrator Team</strong></p>
                 </div>
                 <div class=""footer"">
-                    <p style=""margin: 0;"">© {DateTime.Now.Year} Leave Management System. All rights reserved.</p>
+                    <p style=""margin: 0;"">© {DateTime.Now.Year} LeavePro. All rights reserved.</p>
                     <p style=""margin: 5px 0 0 0;"">This is an automated message, please do not reply.</p>
                 </div>
             </div>

@@ -127,19 +127,26 @@ body.dashboard-body {
 }
 
 .ds-logo-text {
-    display: none;
+    max-width: 0;
+    opacity: 0;
+    visibility: hidden;
     white-space: nowrap;
-    margin-left: 12px;
+    margin-left: 0;
+    transition: max-width 0.3s ease, opacity 0.3s ease, margin-left 0.3s ease, visibility 0.3s;
+    overflow: hidden;
 }
 
 .ds-sidebar:hover .ds-logo-text {
-    display: block;
+    max-width: 200px;
+    opacity: 1;
+    visibility: visible;
+    margin-left: 12px;
 }
 
 .ds-logo-text .brand-name {
     font-size: 1.15rem;
     font-weight: 800;
-    color: #fff;
+    color: inherit;
     letter-spacing: -0.5px;
 }
 
@@ -178,13 +185,20 @@ body.dashboard-body {
 }
 
 .ds-nav-link span {
-    display: none;
+    max-width: 0;
+    opacity: 0;
+    visibility: hidden;
     font-size: 0.9rem;
     font-weight: 500;
+    white-space: nowrap;
+    transition: max-width 0.3s ease, opacity 0.3s ease, visibility 0.3s;
+    overflow: hidden;
 }
 
 .ds-sidebar:hover .ds-nav-link span {
-    display: block;
+    max-width: 200px;
+    opacity: 1;
+    visibility: visible;
 }
 
 .ds-nav-link i, .ds-nav-link .bi {
@@ -532,7 +546,12 @@ body.dashboard-body {
     }
     
     .ds-sidebar.show .ds-logo-text, 
-    .ds-sidebar.show .ds-nav-link span { display: block; }
+    .ds-sidebar.show .ds-nav-link span { 
+        display: block; 
+        opacity: 1;
+        visibility: visible;
+        margin-left: 12px;
+    }
     
     .ds-topbar, .ds-main { margin-left: 0 !important; }
     

@@ -72,15 +72,26 @@
                     <div class="row g-4 mb-4">
                         <div class="col-md-6">
                             <label asp-for="DepartmentId" class="form-label fw-bold small text-muted">DEPARTMENTAL UNIT</label>
-                            <select asp-for="DepartmentId" class="form-select border-2 py-2" asp-items="@(new SelectList(ViewBag.Departments, "Id", "Name"))">
+                            <select asp-for="DepartmentId" id="deptSelector" class="form-select border-2 py-2" required>
                                 <option value="">-- Unassigned --</option>
+                                @foreach (var dept in ViewBag.Departments)
+                                {
+                                    <option value="@dept.Id" data-manager="@dept.ManagerId">@dept.Name</option>
+                                }
                             </select>
                             <div class="form-text small">Primary organizational unit</div>
+                            <div id="deptHint" class="text-danger small mt-1" style="display:none;">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i> This department already has a head.
+                            </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6" id="managerLine">
                             <label asp-for="ManagerId" class="form-label fw-bold small text-muted">REPORTING LINE (MANAGER)</label>
-                            <select asp-for="ManagerId" class="form-select border-2 py-2" asp-items="@(new SelectList(ViewBag.Managers, "Id", "Email"))">
+                            <select asp-for="ManagerId" class="form-select border-2 py-2">
                                 <option value="">-- No direct manager --</option>
+                                @foreach (var m in ViewBag.Managers)
+                                {
+                                    <option value="@m.Id">@m.FirstName @m.LastName (@m.Email)</option>
+                                }
                             </select>
                             <div class="form-text small">Receiver of all leave requests</div>
                         </div>
@@ -120,3 +131,60 @@
     .btn { transition: all 0.2s; }
     .btn:hover { transform: translateY(-1px); }
 </style>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            const roleSelect = $('#Role');
+            const deptSelect = $('#deptSelector');
+            const deptHint = $('#deptHint');
+            const managerLine = $('#managerLine');
+
+            function updateUI() {
+                const isManagerRole = roleSelect.val() === 'Manager';
+                const selectedOpt = deptSelect.find('option:selected');
+                const managerIdInDept = selectedOpt.data('manager');
+                const managerSelect = $('#ManagerId');
+                
+                if (isManagerRole) {
+                    deptSelect.find('option').each(function() {
+                        const mId = $(this).data('manager');
+                        if (mId) {
+                             $(this).hide();
+                        } else {
+                             $(this).show();
+                        }
+                    });
+                    
+                    if (managerIdInDept) {
+                        deptHint.show();
+                    } else {
+                        deptHint.hide();
+                    }
+                } else {
+                    deptSelect.find('option').show();
+                    deptHint.hide();
+                    managerLine.fadeIn();
+
+                    // SMART SYNC: Auto-allocate new user to department head
+                    if (managerIdInDept) {
+                        managerSelect.val(managerIdInDept);
+                    }
+                }
+            }
+
+            roleSelect.on('change', updateUI);
+            deptSelect.on('change', function() {
+                updateUI();
+                const isManagerRole = roleSelect.val() === 'Manager';
+                if (!isManagerRole) {
+                    const managerId = $(this).find('option:selected').data('manager');
+                    if (managerId) {
+                        $('#ManagerId').val(managerId);
+                    }
+                }
+            });
+            updateUI();
+        });
+    </script>
+}

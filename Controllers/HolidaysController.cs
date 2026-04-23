@@ -231,6 +231,26 @@ public class HolidaysController : Controller
         return RedirectToAction(nameof(Manage));
     }
 
+    // POST: Holidays/ClearCalendar
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> ClearCalendar()
+    {
+        var holidays = await _context.Holidays.ToListAsync();
+        if (holidays.Any())
+        {
+            _context.Holidays.RemoveRange(holidays);
+            await _context.SaveChangesAsync();
+            TempData["Success"] = "Holiday calendar cleared successfully.";
+        }
+        else
+        {
+            TempData["Info"] = "No holidays to clear.";
+        }
+        return RedirectToAction(nameof(Manage));
+    }
+
     private bool HolidayExists(int id)
     {
         return _context.Holidays.Any(e => e.Id == id);

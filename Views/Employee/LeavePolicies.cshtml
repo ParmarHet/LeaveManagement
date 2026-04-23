@@ -43,7 +43,7 @@
                                 <span class="text-muted"><i class="fa-solid fa-calendar-check me-2 opacity-50"></i>Allocation</span>
                                 <span class="fw-semibold">
                                     @if(type.Code == "LW") { <span>Unlimited (LWP)</span> }
-                                    else if(type.Code == "CO" || type.Code == "WO" || type.Code == "HD") { <span>Dynamic / N/A</span> }
+                                    else if(type.Code == "CO" || type.Code == "WO" || type.Code == "HD" || type.Code == "ML" || type.Code == "BL") { <span>Dynamic / Case-based</span> }
                                     else { <span>@type.YearlyLimit Days / Year</span> }
                                 </span>
                             </div>

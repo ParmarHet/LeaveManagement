@@ -1,11 +1,19 @@
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<LeavePro.Models.ApplicationUser> UserManager
 @model LeavePro.Models.EmployeeDashboardViewModel
 @{
     ViewData["Title"] = "Dashboard";
     Layout = User.IsInRole("Admin") ? "_AdminLayout" : (User.IsInRole("Manager") ? "_ManagerLayout" : "_EmployeeLayout");
+    var user = await UserManager.GetUserAsync(User);
+    var firstName = user?.FirstName ?? "Member";
 }
 
-<div class="ds-page-header align-items-center">
-    <h1 class="ds-page-title">Personal<br>Dashboard</h1>
+<div class="ds-page-header align-items-end">
+    <div>
+        <div class="section-label mb-3" style="font-size: 0.65rem; padding: 4px 12px;">Work-Life Balance</div>
+        <h1 class="ds-page-title" style="font-size: 2.8rem; line-height: 1;">Welcome back, @firstName</h1>
+        <p class="text-muted small mt-2 mb-0">Here's what's happening with your leave status today.</p>
+    </div>
     
     <div class="d-flex gap-4">
         <!-- Pending Card -->

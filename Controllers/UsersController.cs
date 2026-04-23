@@ -137,18 +137,16 @@ public class UsersController : Controller
             FirstName = user.FirstName,
             LastName = user.LastName,
             Email = user.Email ?? string.Empty,
-            Role = userRoles.FirstOrDefault() ?? "None"
+            Role = userRoles.FirstOrDefault() ?? "None",
+            DepartmentId = user.DepartmentId,
+            ManagerId = user.ManagerId
         };
         
-        var availableRoles = await _roleManager.Roles.Select(r => r.Name).ToListAsync();
-        // Do not expose the Admin role in the standard UI to avoid accidental privilege elevation
-        availableRoles = availableRoles.Where(r => r != Roles.Admin).ToList();
-        ViewBag.Roles = availableRoles;
+        await PopulateEditViewBags(user.Id);
 
         return View(model);
     }
 
-    // POST: Users/Edit/5
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(string id, UserViewModel model)
@@ -158,28 +156,110 @@ public class UsersController : Controller
         var user = await _userManager.FindByIdAsync(id);
         if (user == null) return NotFound();
 
+        var currentRoles = await _userManager.GetRolesAsync(user);
+        var oldRole = currentRoles.FirstOrDefault();
+
         if (ModelState.IsValid)
         {
-            // Prevent assigning Admin via the normal edit UI
+            // 1. Prevent assigning Admin via the normal edit UI
             if (model.Role == Roles.Admin)
             {
-                ModelState.AddModelError(string.Empty, "Assigning the Admin role via this page is not allowed. Please contact a SuperAdmin.");
-                var roles = await _roleManager.Roles.Select(r => r.Name).ToListAsync();
-                roles = roles.Where(r => r != Roles.Admin).ToList();
-                ViewBag.Roles = roles;
+                ModelState.AddModelError(string.Empty, "Assigning the Admin role via this page is not allowed.");
+                await PopulateEditViewBags(user.Id);
                 return View(model);
             }
 
-            var currentRoles = await _userManager.GetRolesAsync(user);
+            // 2. Prevent Demotion if they are still a Manager in the Hierarchy
+            if (oldRole == Roles.Manager && model.Role == Roles.Employee)
+            {
+                var managesDepartments = await _context.Departments.AnyAsync(d => d.ManagerId == user.Id);
+                if (managesDepartments)
+                {
+                    ModelState.AddModelError(string.Empty, "Cannot demote to Employee: This user is currently assigned as the Head of a Department. Please assign a new manager to the department first.");
+                    await PopulateEditViewBags(user.Id);
+                    return View(model);
+                }
+
+                var hasSubordinates = await _context.Users.AnyAsync(u => u.ManagerId == user.Id);
+                if (hasSubordinates)
+                {
+                    ModelState.AddModelError(string.Empty, "Cannot demote to Employee: This user still has team members reporting to them. Please reassign their team first.");
+                    await PopulateEditViewBags(user.Id);
+                    return View(model);
+                }
+            }
+
+            // 3. Enforce "At most 1 manager per department" if promoting
+            if (model.Role == Roles.Manager && model.DepartmentId.HasValue)
+            {
+                var department = await _context.Departments.FindAsync(model.DepartmentId.Value);
+                if (department != null && department.ManagerId != null && department.ManagerId != user.Id)
+                {
+                    var currentDeptManager = await _userManager.FindByIdAsync(department.ManagerId);
+                    ModelState.AddModelError(string.Empty, $"Department '{department.Name}' already has a manager ({currentDeptManager?.FirstName} {currentDeptManager?.LastName}). A department can have only one head.");
+                    await PopulateEditViewBags(user.Id);
+                    return View(model);
+                }
+            }
+
+            // Update user properties
+            user.DepartmentId = model.DepartmentId;
+            user.ManagerId = model.ManagerId;
+            await _userManager.UpdateAsync(user);
+
+            // Update Roles
             await _userManager.RemoveFromRolesAsync(user, currentRoles);
             await _userManager.AddToRoleAsync(user, model.Role);
+
+            // 4. Handle Manager/Department Transitions
+            if (model.Role == Roles.Manager && model.DepartmentId.HasValue)
+            {
+                // Clear this manager from any OTHER departments they might have headed
+                var otherDepartments = await _context.Departments
+                    .Where(d => d.ManagerId == user.Id && d.Id != model.DepartmentId.Value)
+                    .ToListAsync();
+                foreach (var od in otherDepartments)
+                {
+                    od.ManagerId = null;
+                    _context.Update(od);
+                }
+
+                var department = await _context.Departments.FindAsync(model.DepartmentId.Value);
+                if (department != null)
+                {
+                    // Set this user as the head of the selected department
+                    department.ManagerId = user.Id;
+                    _context.Update(department);
+
+                    // Sync all employees in that department to report to this manager
+                    var departmentEmployees = await _context.Users
+                        .Where(u => u.DepartmentId == model.DepartmentId.Value && u.Id != user.Id)
+                        .ToListAsync();
+
+                    foreach (var emp in departmentEmployees)
+                    {
+                        emp.ManagerId = user.Id;
+                    }
+                }
+                await _context.SaveChangesAsync();
+            }
 
             return RedirectToAction(nameof(Index));
         }
 
-        var availableRoles = await _roleManager.Roles.Select(r => r.Name).ToListAsync();
-        ViewBag.Roles = availableRoles;
+        await PopulateEditViewBags(user.Id);
         return View(model);
+    }
+
+    private async Task PopulateEditViewBags(string? userId = null)
+    {
+        var availableRoles = await _roleManager.Roles.Select(r => r.Name).ToListAsync();
+        ViewBag.Roles = availableRoles.Where(r => r != Roles.Admin).ToList();
+        
+        ViewBag.Departments = await _context.Departments.ToListAsync();
+        
+        var managers = await _userManager.GetUsersInRoleAsync(Roles.Manager);
+        ViewBag.Managers = managers.Where(m => m.IsActive && m.Id != userId).ToList();
     }
 
     // GET: Users/Pending
@@ -230,7 +310,6 @@ public class UsersController : Controller
         return View(model);
     }
 
-    // POST: Users/Review/5
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Review(string id, UserViewModel model)
@@ -242,6 +321,18 @@ public class UsersController : Controller
 
         if (ModelState.IsValid)
         {
+            // 1. Enforce "At most 1 manager per department"
+            if (model.Role == Roles.Manager && model.DepartmentId.HasValue)
+            {
+                var department = await _context.Departments.FindAsync(model.DepartmentId.Value);
+                if (department != null && department.ManagerId != null)
+                {
+                    ModelState.AddModelError(string.Empty, $"Department '{department.Name}' already has a manager. A department can have only one head.");
+                    await PopulateReviewViewBags();
+                    return View(model);
+                }
+            }
+
             // Update User Organizational Details
             user.DepartmentId = model.DepartmentId;
             user.ManagerId = model.ManagerId;
@@ -258,6 +349,27 @@ public class UsersController : Controller
                 var currentRoles = await _userManager.GetRolesAsync(user);
                 await _userManager.RemoveFromRolesAsync(user, currentRoles);
                 await _userManager.AddToRoleAsync(user, model.Role);
+
+                // 2. Automatic Redirection: If now Manager, sync department members
+                if (model.Role == Roles.Manager && model.DepartmentId.HasValue)
+                {
+                    var department = await _context.Departments.FindAsync(model.DepartmentId.Value);
+                    if (department != null)
+                    {
+                        department.ManagerId = user.Id;
+                        _context.Update(department);
+
+                        var departmentEmployees = await _context.Users
+                            .Where(u => u.DepartmentId == model.DepartmentId.Value && u.Id != user.Id)
+                            .ToListAsync();
+
+                        foreach (var emp in departmentEmployees)
+                        {
+                            emp.ManagerId = user.Id;
+                        }
+                        await _context.SaveChangesAsync();
+                    }
+                }
 
                 // ** Auto-allocate default leaves for the newly activated user **
                 await _leaveAllocationService.AllocateDefaultLeavesAsync(user.Id, DateTime.Now.Year);
@@ -391,12 +503,12 @@ public class UsersController : Controller
     private async Task PopulateReviewViewBags()
     {
         var roles = await _roleManager.Roles.Select(r => r.Name).ToListAsync();
-        // Hide Admin role from the approval dropdown to avoid accidental assignment of full privileges
-        roles = roles.Where(r => r != Roles.Admin).ToList();
-        ViewBag.Roles = roles;
-        ViewBag.Departments = await _context.Departments.ToListAsync();
+        ViewBag.Roles = roles.Where(r => r != Roles.Admin).ToList();
         
-        // Find possible managers (users with Manager role)
+        var departments = await _context.Departments.ToListAsync();
+        ViewBag.Departments = departments;
+        
+        // Find possible managers
         var managers = await _userManager.GetUsersInRoleAsync(Roles.Manager);
         ViewBag.Managers = managers.Where(m => m.IsActive).ToList();
     }
@@ -421,7 +533,7 @@ public class UsersController : Controller
             string subject = "Account Registration Update";
             string body = $@"
                 <p>Hello {user.FirstName},</p>
-                <p>We regret to inform you that your account registration request for the Leave Management System has been rejected.</p>
+                <p>We regret to inform you that your account registration request for LeavePro has been rejected.</p>
                 <p>Please contact your administrator for more details.</p>
             ";
             if (user.Email != null)

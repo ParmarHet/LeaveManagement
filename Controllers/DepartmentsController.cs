@@ -147,9 +147,25 @@ public class DepartmentsController : Controller
         var dept = await _context.Departments.FindAsync(id);
         if (dept == null) return NotFound();
 
+        // 1. Update Department Table
         dept.ManagerId = string.IsNullOrEmpty(managerId) ? null : managerId;
+        _context.Update(dept);
+
+        // 2. Sync Hierarchy: All employees in this department should now report to this manager
+        if (!string.IsNullOrEmpty(managerId))
+        {
+            var employeesInDept = await _userManager.Users
+                .Where(u => u.DepartmentId == id && u.Id != managerId)
+                .ToListAsync();
+
+            foreach (var emp in employeesInDept)
+            {
+                emp.ManagerId = managerId;
+            }
+        }
+
         await _context.SaveChangesAsync();
-        TempData["Success"] = "Manager assigned successfully.";
+        TempData["Success"] = "Manager assigned and team redirected successfully.";
         return RedirectToAction(nameof(Index));
     }
 

@@ -64,23 +64,20 @@
     <nav class="ds-sidebar-nav">
         @if (isTeamMode)
         {
-            <a class="ds-nav-link @(currentAction == "Dashboard" && currentController == "Manager" ? "active" : "")" asp-controller="Manager" asp-action="Dashboard" title="Team Dashboard">
-                <i class="bi bi-grid-fill"></i><span>Team Dashboard</span>
+            <a class="ds-nav-link @(currentAction == "Dashboard" && currentController == "Manager" ? "active" : "")" asp-controller="Manager" asp-action="Dashboard" title="Dashboard">
+                <i class="bi bi-grid-fill"></i><span>Dashboard</span>
             </a>
             <a class="ds-nav-link @(currentAction == "PendingRequests" ? "active" : "")" asp-controller="Manager" asp-action="PendingRequests" title="Approvals">
                 <i class="bi bi-check-square-fill"></i><span>Approvals</span>
             </a>
-            <a class="ds-nav-link @(currentAction == "History" && currentController == "Manager" ? "active" : "")" asp-controller="Manager" asp-action="History" title="Team History">
-                <i class="bi bi-clock-history"></i><span>Team History</span>
+            <a class="ds-nav-link @(currentAction == "History" && currentController == "Manager" ? "active" : "")" asp-controller="Manager" asp-action="History" title="Leaves">
+                <i class="bi bi-clock-history"></i><span>Leaves</span>
             </a>
-            <a class="ds-nav-link @(currentAction == "TeamCalendar" ? "active" : "")" asp-controller="Manager" asp-action="TeamCalendar" title="Team Calendar">
-                <i class="bi bi-calendar-event"></i><span>Team Calendar</span>
+            <a class="ds-nav-link @(currentAction == "MyTeam" ? "active" : "")" asp-controller="Manager" asp-action="MyTeam" title="My Team">
+                <i class="bi bi-person-workspace"></i><span>My Team</span>
             </a>
-            <a class="ds-nav-link @(currentAction == "MyTeam" ? "active" : "")" asp-controller="Manager" asp-action="MyTeam" title="Team Portal">
-                <i class="bi bi-person-workspace"></i><span>Team Portal</span>
-            </a>
-            <a class="ds-nav-link @(currentAction == "Holidays" && currentController == "Manager" ? "active" : "")" asp-controller="Manager" asp-action="Holidays" title="Holidays">
-                <i class="bi bi-calendar-heart"></i><span>Holidays</span>
+            <a class="ds-nav-link @(currentAction == "Holidays" && currentController == "Manager" ? "active" : "")" asp-controller="Manager" asp-action="Holidays" title="Calendar">
+                <i class="bi bi-calendar-event"></i><span>Calendar</span>
             </a>
         }
         else

@@ -18,6 +18,14 @@
             <a asp-action="Create" class="btn btn-primary shadow-sm rounded-pill px-4">
                 <i class="bi bi-plus-circle me-1"></i> Add New Holiday
             </a>
+            @if (Model.Any())
+            {
+                <form asp-action="ClearCalendar" method="post" onsubmit="return confirm('WARNING: Are you sure you want to completely clear the holiday calendar? This action cannot be undone.');" class="d-inline">
+                    <button type="submit" class="btn btn-danger shadow-sm rounded-pill px-4">
+                        <i class="bi bi-trash3-fill me-1"></i> Clear Calendar
+                    </button>
+                </form>
+            }
         </div>
     </div>
 

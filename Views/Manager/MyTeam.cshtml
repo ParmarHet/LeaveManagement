@@ -79,7 +79,7 @@
                            <div class="avatar-block bg-primary text-white">@initials</div>
                            <div>
                                <h5 class="modal-title fw-bold mb-0">@m.EmployeeName</h5>
-                               <p class="text-muted small mb-0">@m.Shift Shift</p>
+                               <p class="text-muted small mb-0">@m.Email</p>
                            </div>
                        </div>
                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -108,23 +108,37 @@
                             }
                         </div>
                         
-                        <h6 class="fw-bold mt-4 mb-3 d-flex align-items-center text-dark"><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i> Recent Requests</h6>
-                        <div class="list-group list-group-flush border rounded-4 overflow-hidden">
+                        <h6 class="fw-bold mt-5 mb-3 d-flex align-items-center text-dark"><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i> Recent Requests</h6>
+                        <div class="ds-table-container mt-0">
                             @if(!m.History.Any())
                             {
-                                <div class="list-group-item text-center py-3 text-muted small">No history available.</div>
+                                <div class="text-center py-4 text-muted small">No leave history available.</div>
                             }
-                            @foreach(var h in m.History.Take(5))
+                            else
                             {
-                                <div class="list-group-item d-flex justify-content-between align-items-center p-3">
-                                    <div>
-                                        <div class="fw-bold small">@h.LeaveType?.Name</div>
-                                        <div class="text-muted" style="font-size: 0.7rem;">@h.StartDate.ToString("dd MMM") - @h.EndDate.ToString("dd MMM yyyy")</div>
-                                    </div>
-                                    <span class="badge @(h.Approved == true ? "bg-success-subtle text-success" : (h.Approved == false ? "bg-danger-subtle text-danger" : "bg-warning-subtle text-warning")) rounded-pill small px-3">
-                                        @(h.Approved == true ? "Approved" : (h.Approved == false ? "Rejected" : "Pending"))
-                                    </span>
-                                </div>
+                                <table class="ds-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Type</th>
+                                            <th>Duration</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    @foreach(var h in m.History.Take(5))
+                                    {
+                                        <tr>
+                                            <td><span class="fw-bold text-dark">@h.LeaveType?.Name</span></td>
+                                            <td><span class="text-muted small">@h.StartDate.ToString("dd MMM yyyy") - @h.EndDate.ToString("dd MMM yyyy")</span></td>
+                                            <td>
+                                                <span class="badge @(h.Approved == true ? "bg-success-subtle text-success" : (h.Approved == false ? "bg-danger-subtle text-danger" : "bg-warning-subtle text-warning")) rounded-pill px-3">
+                                                    @(h.Approved == true ? "Approved" : (h.Approved == false ? "Rejected" : "Pending"))
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                    </tbody>
+                                </table>
                             }
                         </div>
                     </div>

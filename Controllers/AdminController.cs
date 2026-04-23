@@ -491,6 +491,8 @@ public class AdminController : Controller
             var existing = await _context.LeaveTypes.FindAsync(id);
             if (existing == null) return NotFound();
 
+            int difference = model.DefaultDays - existing.DefaultDays;
+
             existing.Name               = model.Name;
             existing.Code               = model.Code;
             existing.DefaultDays        = model.DefaultDays;
@@ -501,6 +503,20 @@ public class AdminController : Controller
             existing.YearlyLimit        = model.YearlyLimit;
             existing.IsEnabled          = model.IsEnabled;
             existing.DateModified       = DateTime.UtcNow;
+
+            if (difference != 0)
+            {
+                var period = DateTime.Now.Year;
+                var allocationsToUpdate = await _context.LeaveAllocations
+                    .Where(a => a.LeaveTypeId == id && a.Period == period)
+                    .ToListAsync();
+                    
+                foreach (var alloc in allocationsToUpdate)
+                {
+                    alloc.NumberOfDays += difference;
+                    if (alloc.NumberOfDays < 0) alloc.NumberOfDays = 0;
+                }
+            }
 
             await _context.SaveChangesAsync();
             TempData["Success"] = "Leave type rules updated successfully.";
@@ -657,6 +673,24 @@ public class AdminController : Controller
             TempData["Error"] = "Error importing holidays: " + ex.Message;
         }
 
+        return RedirectToAction(nameof(HolidayCalendar));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ClearCalendar()
+    {
+        var holidays = await _context.Holidays.ToListAsync();
+        if (holidays.Any())
+        {
+            _context.Holidays.RemoveRange(holidays);
+            await _context.SaveChangesAsync();
+            TempData["Success"] = "Holiday calendar cleared successfully.";
+        }
+        else
+        {
+            TempData["Info"] = "No holidays to clear.";
+        }
         return RedirectToAction(nameof(HolidayCalendar));
     }
 

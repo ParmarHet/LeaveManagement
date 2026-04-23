@@ -61,10 +61,32 @@ public class EmployeeController : Controller
             .Where(lt => lt.Code != "WO" && lt.Code != "HD")
             .ToListAsync();
 
-        var floatingHolidays = await _context.Holidays
+        var rawFloatingHolidays = await _context.Holidays
             .Where(h => h.IsFloating && ((h.Date.Year == DateTime.Now.Year) || h.IsRecurringYearly))
             .Where(h => (h.DepartmentId == null && h.EmployeeId == null) || (h.DepartmentId == user.DepartmentId) || (h.EmployeeId == user.Id))
             .ToListAsync();
+
+        var floatingHolidays = new List<Holiday>();
+        foreach (var h in rawFloatingHolidays)
+        {
+            var effectiveDate = h.Date;
+            if (h.IsRecurringYearly)
+            {
+                // Project recurring holiday to current year
+                effectiveDate = new DateTime(DateTime.Now.Year, h.Date.Month, h.Date.Day);
+            }
+            if (effectiveDate.Date >= DateTime.Today)
+            {
+                floatingHolidays.Add(new Holiday 
+                {
+                    Id = h.Id,
+                    Name = h.Name,
+                    Date = effectiveDate,
+                    IsFloating = true,
+                    IsRecurringYearly = h.IsRecurringYearly
+                });
+            }
+        }
 
         var allLeaves = await _context.LeaveRequests
             .Where(r => r.RequestingEmployeeId == user.Id && r.Approved == true && !r.Cancelled)
@@ -91,6 +113,33 @@ public class EmployeeController : Controller
             .Where(r => r.RequestingEmployeeId == user.Id && r.Approved == true && !r.Cancelled)
             .ToListAsync();
         model.CurrentBalances = await GetLeaveBalancesAsync(user, allLeaves);
+
+        var rawFloatingHolidays = await _context.Holidays
+            .Where(h => h.IsFloating && ((h.Date.Year == DateTime.Now.Year) || h.IsRecurringYearly))
+            .Where(h => (h.DepartmentId == null && h.EmployeeId == null) || (h.DepartmentId == user.DepartmentId) || (h.EmployeeId == user.Id))
+            .ToListAsync();
+
+        var floatingHolidays = new List<Holiday>();
+        foreach (var h in rawFloatingHolidays)
+        {
+            var effectiveDate = h.Date;
+            if (h.IsRecurringYearly)
+            {
+                effectiveDate = new DateTime(DateTime.Now.Year, h.Date.Month, h.Date.Day);
+            }
+            if (effectiveDate.Date >= DateTime.Today)
+            {
+                floatingHolidays.Add(new Holiday 
+                {
+                    Id = h.Id,
+                    Name = h.Name,
+                    Date = effectiveDate,
+                    IsFloating = true,
+                    IsRecurringYearly = h.IsRecurringYearly
+                });
+            }
+        }
+        model.AvailableFloatingHolidays = floatingHolidays;
 
         // ── Validation: Date order
         if (model.StartDate > model.EndDate)
@@ -275,13 +324,16 @@ public class EmployeeController : Controller
             var deptUsers = await _context.Users.Where(u => u.DepartmentId == user.DepartmentId && u.IsActive).CountAsync();
             if (deptUsers > 0)
             {
-                // Dynamic attendance rule based on team size table (Approx 40% absence allowed)
-                // 1-3 members: max 1 on leave
-                // 4-6 members: max 2 on leave
-                // 7-9 members: max 3 on leave
-                // 10 members: max 4 on leave
-                int maxAbsence = (int)Math.Ceiling(deptUsers / 3.0);
-                if (deptUsers == 10) maxAbsence = 4; // Table says 10 -> 4
+                int maxAbsence;
+                if (deptUsers <= 10)
+                {
+                    int[] table = { 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4 };
+                    maxAbsence = table[deptUsers];
+                }
+                else
+                {
+                    maxAbsence = (int)(Math.Floor(deptUsers * 0.4));
+                }
 
                 for (var d = model.StartDate; d <= model.EndDate; d = d.AddDays(1))
                 {
