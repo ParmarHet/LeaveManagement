@@ -82,13 +82,22 @@
             <tbody>
             @foreach (var l in Model)
             {
-                int days = (int)(l.EndDate - l.StartDate).TotalDays + 1;
                 <tr>
                     <td class="text-muted small">#@l.Id</td>
                     <td><span class="fw-semibold">@l.LeaveType?.Name</span></td>
                     <td>@l.StartDate.ToString("dd MMM yyyy")</td>
                     <td>@l.EndDate.ToString("dd MMM yyyy")</td>
-                    <td>@days</td>
+                    <td>
+                        <div class="d-flex flex-column">
+                            <span class="fw-bold fs-6">@l.ActualDays <small class="text-muted fw-normal">days</small></span>
+                            @if (l.HolidayCount > 0)
+                            {
+                                <span class="badge bg-info-subtle text-info border border-info-subtle border-1 rounded-pill mt-1" style="font-size: 0.65rem; width: fit-content;" title="Includes Weekends/Public Holidays">
+                                    <i class="fa-solid fa-umbrella-beach me-1"></i> +@l.HolidayCount Hol
+                                </span>
+                            }
+                        </div>
+                    </td>
                     <td>@l.DateRequested.ToLocalTime().ToString("dd MMM yyyy")</td>
                     <td><small class="text-muted">@(string.IsNullOrEmpty(l.RequestComments) ? "—" : l.RequestComments)</small></td>
                     <td>

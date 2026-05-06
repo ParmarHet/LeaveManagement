@@ -58,7 +58,6 @@
         <tbody>
         @foreach (var r in Model)
         {
-            int days = (int)(r.EndDate - r.StartDate).TotalDays + 1;
             <tr>
                 <td>
                     <div class="fw-semibold small">@r.RequestingEmployee?.FirstName @r.RequestingEmployee?.LastName</div>
@@ -66,7 +65,15 @@
                 <td><small>@r.LeaveType?.Name</small></td>
                 <td><small>@r.StartDate.ToString("dd MMM yyyy")</small></td>
                 <td><small>@r.EndDate.ToString("dd MMM yyyy")</small></td>
-                <td><strong>@days</strong></td>
+                 <td>
+                    <div class="d-flex flex-column">
+                        <span class="fw-bold">@r.ActualDays</span>
+                        @if (r.HolidayCount > 0)
+                        {
+                            <small class="text-info" style="font-size: 0.7rem;">+@r.HolidayCount Hol</small>
+                        }
+                    </div>
+                </td>
                 <td><small class="text-muted">@(r.ManagerRemarks ?? "—")</small></td>
                 <td>
                     @if (r.Cancelled) { <span class="badge badge-cancelled">Cancelled</span> }

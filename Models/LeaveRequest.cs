@@ -30,4 +30,8 @@ public class LeaveRequest
     public DateTime? DateActioned { get; set; }
 
     public string? AttachmentPath { get; set; }
+    
+    // New fields for clarified tracking
+    public double ActualDays { get; set; }
+    public int HolidayCount { get; set; }
 }

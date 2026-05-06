@@ -54,10 +54,17 @@
             </div>
 
             <div class="col-md-12">
-                <div class="alert alert-info py-2 px-3 mb-0" id="daysSummary" style="display:none">
-                    <i class="fa-solid fa-info-circle me-1"></i>
-                    Total working days: <strong id="totalDays">0</strong>
-                    <small class="text-muted ms-2">(weekends excluded)</small>
+                <div class="alert alert-info py-3 px-4 mb-0" id="daysSummary" style="display:none; border-left: 5px solid #0dcaf0;">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <i class="fa-solid fa-calculator me-2"></i>
+                            Net Leave Days: <strong id="totalDays" class="fs-5">0</strong>
+                        </div>
+                        <div id="breakdownSection" class="text-end small text-muted">
+                            <span id="weekendBreakdown" class="me-2"></span>
+                            <span id="holidayBreakdown"></span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -153,22 +160,55 @@
 
 @section Scripts {
 <script>
-function countBusinessDays(start, end) {
+const publicHolidays = @Html.Raw(Json.Serialize(ViewBag.PublicHolidays ?? new List<string>()));
+
+function getNetDays(startStr, endStr) {
+    if (!startStr || !endStr) return 0;
+    let start = new Date(startStr);
+    let end = new Date(endStr);
     let count = 0;
     let d = new Date(start);
     while (d <= end) {
-        if (d.getDay() !== 0 && d.getDay() !== 6) count++;
+        const dateStr = d.toISOString().split('T')[0];
+        if (d.getDay() !== 0 && d.getDay() !== 6 && !publicHolidays.includes(dateStr)) {
+            count++;
+        }
         d.setDate(d.getDate() + 1);
     }
     return count;
 }
 
 function updateDays() {
-    const s = document.getElementById('startDate').value;
-    const e = document.getElementById('endDate').value;
-    if (s && e && s <= e) {
-        const days = countBusinessDays(new Date(s), new Date(e));
-        document.getElementById('totalDays').textContent = days;
+    const sStr = document.getElementById('startDate').value;
+    const eStr = document.getElementById('endDate').value;
+    
+    if (sStr && eStr && sStr <= eStr) {
+        const start = new Date(sStr);
+        const end = new Date(eStr);
+        
+        let netDays = 0;
+        let weekends = 0;
+        let holidays = 0;
+        
+        let d = new Date(start);
+        while (d <= end) {
+            const dateStr = d.toISOString().split('T')[0];
+            const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+            const isHoliday = publicHolidays.includes(dateStr);
+            
+            if (isWeekend) {
+                weekends++;
+            } else if (isHoliday) {
+                holidays++;
+            } else {
+                netDays++;
+            }
+            d.setDate(d.getDate() + 1);
+        }
+        
+        document.getElementById('totalDays').textContent = netDays;
+        document.getElementById('weekendBreakdown').textContent = weekends > 0 ? `(${weekends} weekend${weekends > 1 ? 's' : ''})` : "";
+        document.getElementById('holidayBreakdown').textContent = holidays > 0 ? `(${holidays} public holiday${holidays > 1 ? 's' : ''})` : "";
         document.getElementById('daysSummary').style.display = 'block';
     } else {
         document.getElementById('daysSummary').style.display = 'none';
@@ -221,7 +261,7 @@ function updateUiForLeaveType() {
         // Supporting Document Logic (SL > 2 days, ML require it. BL no longer needs it)
         const s = document.getElementById('startDate').value;
         const e = document.getElementById('endDate').value;
-        const days = s && e ? countBusinessDays(new Date(s), new Date(e)) : 0;
+        const days = s && e ? getNetDays(s, e) : 0;
 
         if (type.code === 'ML' || (type.code === 'SL' && days > 2)) {
             document.getElementById('docRequired').style.display = 'inline';
@@ -261,7 +301,7 @@ function updateBlHint() {
     const s = document.getElementById('startDate').value;
     const e = document.getElementById('endDate').value;
     if (s && e) {
-        const days = countBusinessDays(new Date(s), new Date(e));
+        const days = getNetDays(s, e);
         if (days > max) {
             document.getElementById('blHint').className = "alert alert-danger py-1 px-2 mt-2 small";
         } else {

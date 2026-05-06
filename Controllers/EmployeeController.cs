@@ -98,6 +98,13 @@ public class EmployeeController : Controller
             AvailableFloatingHolidays = floatingHolidays,
             CurrentBalances = balances
         };
+
+        // Pass standard holidays for client-side logic
+        ViewBag.PublicHolidays = await _context.Holidays
+            .Where(h => !h.IsFloating)
+            .Select(h => h.Date.ToString("yyyy-MM-dd"))
+            .ToListAsync();
+
         return View(model);
     }
 
@@ -142,21 +149,35 @@ public class EmployeeController : Controller
         model.AvailableFloatingHolidays = floatingHolidays;
 
         // ── Validation: Date order
-        if (model.StartDate > model.EndDate)
+        if (model.StartDate.Date > model.EndDate.Date)
         {
             ModelState.AddModelError("", "Start date cannot be after end date.");
             return View(model);
         }
 
-        // ── Calculate business days (excluding weekends)
-        int businessDays = CountBusinessDays(model.StartDate, model.EndDate);
-
-        // ── Validation: Remove holidays from count (Handling recurring and targeted holidays)
-        var holidays = await _context.Holidays
+        // ── Calculate business days, overlapping holidays and pure leave days
+        int totalDays = (int)(model.EndDate.Date - model.StartDate.Date).TotalDays + 1;
+        int weekendCount = 0;
+        int publicHolidayCount = 0;
+        
+        var holidaysInRange = await _context.Holidays
             .Where(h => (h.Date >= model.StartDate && h.Date <= model.EndDate) || (h.IsRecurringYearly && h.Date.Month == model.StartDate.Month && h.Date.Day == model.StartDate.Day))
             .Where(h => (h.DepartmentId == null && h.EmployeeId == null) || (h.DepartmentId == user.DepartmentId) || (h.EmployeeId == user.Id))
             .ToListAsync();
-        businessDays -= holidays.Count;
+            
+        var holidayDates = holidaysInRange.Select(h => h.Date.Date).ToList();
+
+        for (var d = model.StartDate.Date; d <= model.EndDate.Date; d = d.AddDays(1))
+        {
+            bool isWeekend = d.DayOfWeek == DayOfWeek.Saturday || d.DayOfWeek == DayOfWeek.Sunday;
+            bool isPublicHoliday = holidayDates.Contains(d);
+
+            if (isWeekend) weekendCount++;
+            else if (isPublicHoliday) publicHolidayCount++;
+        }
+
+        int holidayTotal = weekendCount + publicHolidayCount;
+        double businessDays = totalDays - holidayTotal;
 
         var leaveTypeObj = model.LeaveTypes.FirstOrDefault(lt => lt.Id == model.LeaveTypeId);
         if (leaveTypeObj == null)
@@ -307,7 +328,7 @@ public class EmployeeController : Controller
         // Rule 15: FD
         if (leaveTypeObj.Code == "FD")
         {
-            var isFloatingHoliday = holidays.Any(h => h.IsFloating && 
+            var isFloatingHoliday = holidaysInRange.Any(h => h.IsFloating && 
                 (h.Date.Date == model.StartDate.Date || (h.IsRecurringYearly && h.Date.Month == model.StartDate.Month && h.Date.Day == model.StartDate.Day)));
             
             if (!isFloatingHoliday)
@@ -436,6 +457,10 @@ public class EmployeeController : Controller
             Cancelled = false,
             AttachmentPath = attachmentPath,
             
+            // Precise counts
+            ActualDays = businessDays,
+            HolidayCount = holidayTotal,
+
             // Bereavement Details
             DateOfDeath = model.DateOfDeath,
             DeceasedName = model.DeceasedName,
@@ -472,7 +497,7 @@ public class EmployeeController : Controller
                     leaveType?.Name ?? "Leave",
                     model.StartDate,
                     model.EndDate,
-                    businessDays,
+                    (int)businessDays,
                     model.Reason,
                     dashboardUrl
                 );
@@ -732,7 +757,7 @@ public class EmployeeController : Controller
              if (type.Code == "ML" && user.Gender?.ToLower() != "female") continue;
 
              var typeLeaves = allApprovedLeaves.Where(l => l.LeaveTypeId == type.Id).ToList();
-             double used = typeLeaves.Sum(l => (double)CountBusinessDays(l.StartDate, l.EndDate) - holidays.Count(h => h.Date >= l.StartDate && h.Date <= l.EndDate));
+             double used = typeLeaves.Sum(l => l.ActualDays > 0 ? l.ActualDays : (double)CountBusinessDays(l.StartDate, l.EndDate) - holidays.Count(h => h.Date >= l.StartDate && h.Date <= l.EndDate));
              
              var alloc = allocations.FirstOrDefault(a => a.LeaveTypeId == type.Id);
              

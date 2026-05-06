@@ -32,7 +32,15 @@
                     <td><span class="badge badge-pending px-2">@r.LeaveType?.Name</span></td>
                     <td>@r.StartDate.ToString("dd MMM yyyy")</td>
                     <td>@r.EndDate.ToString("dd MMM yyyy")</td>
-                    <td><strong>@days</strong></td>
+                    <td>
+                        <div class="d-flex flex-column">
+                            <span class="fw-bold">@r.ActualDays</span>
+                            @if (r.HolidayCount > 0)
+                            {
+                                <small class="text-info" style="font-size: 0.7rem;">+@r.HolidayCount Hol</small>
+                            }
+                        </div>
+                    </td>
                     <td>@r.DateRequested.ToLocalTime().ToString("dd MMM")</td>
                     <td><small class="text-muted" title="@r.RequestComments">@(r.RequestComments?.Length > 40 ? r.RequestComments.Substring(0,40)+"..." : r.RequestComments)</small></td>
                     <td>

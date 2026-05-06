@@ -30,11 +30,14 @@ public class LeaveApprovalViewModel
     public string LeaveTypeName { get; set; } = string.Empty;
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
-    public int TotalDays { get; set; }
+    public double TotalDays { get; set; }
+    public double ActualDays { get; set; }
+    public int HolidayCount { get; set; }
     public string Reason { get; set; } = string.Empty;
     public DateTime DateRequested { get; set; }
     public string? ManagerRemarks { get; set; }
-    public int AvailableBalance { get; set; }
+    public double AvailableBalance { get; set; }
+    public bool IsUnlimited { get; set; }
     public string? AttachmentPath { get; set; }
 
     // Bereavement Details

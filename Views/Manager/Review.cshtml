@@ -2,7 +2,6 @@
 @{
     ViewData["Title"] = "Review Leave Request";
     Layout = "_ManagerLayout";
-    int days = (int)(Model.EndDate - Model.StartDate).TotalDays + 1;
 }
 
 <div class="row justify-content-center">
@@ -44,18 +43,31 @@
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="p-3 rounded text-center" style="background:@(days > Model.AvailableBalance ? "#fff5f5" : "#e8f5e9")">
-                    <div class="text-muted small">Requested Days</div>
-                    <div class="fw-bold" style="font-size:1.4rem">@days</div>
+                <div class="p-3 rounded text-center" style="background:@(Model.ActualDays > Model.AvailableBalance ? "#fff5f5" : "#e8f5e9")">
+                    <div class="text-muted small">Actual Leave Days</div>
+                    <div class="fw-bold" style="font-size:1.4rem">@Model.ActualDays</div>
+                    @if (Model.HolidayCount > 0)
+                    {
+                        <div class="text-info small mt-1">
+                            <i class="fa-solid fa-umbrella-beach me-1"></i> +@Model.HolidayCount Holidays Incl.
+                        </div>
+                    }
                 </div>
             </div>
         </div>
 
-        @if (days > Model.AvailableBalance)
+        @if (Model.IsUnlimited)
+        {
+            <div class="alert alert-light border d-flex align-items-center">
+                <i class="fa-solid fa-infinity me-2 text-primary fs-5"></i>
+                <span>This leave type (<strong>@Model.LeaveTypeName</strong>) has <strong>no balance limit</strong>. Approval is at your discretion.</span>
+            </div>
+        }
+        else if (Model.ActualDays > Model.AvailableBalance)
         {
             <div class="alert alert-warning">
                 <i class="fa-solid fa-triangle-exclamation me-2"></i>
-                <strong>Balance Warning:</strong> Employee has only <strong>@Model.AvailableBalance days</strong> available but is requesting <strong>@days days</strong>.
+                <strong>Balance Warning:</strong> Employee has only <strong>@Model.AvailableBalance days</strong> available but is requesting <strong>@Model.ActualDays days</strong>.
             </div>
         }
         else
